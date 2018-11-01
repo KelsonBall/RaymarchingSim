@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kelson.Common.Transforms\Kelson.Common.Transforms.csproj" />
+    <ProjectReference Include="..\Kelson.Common.Vectors\Kelson.Common.Vectors.csproj" />
+  </ItemGroup>
+
+</Project>

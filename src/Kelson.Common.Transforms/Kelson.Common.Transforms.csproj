@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Optimize>true</Optimize>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Kelson Ball</Authors>
+    <Version>0.1.0</Version>
+    <Company>Kelson Software</Company>
+    <Description>Affine transforms in R3</Description>
+    <PackageLicenseUrl>https://opensource.org/licenses/MIT</PackageLicenseUrl>
+    <PackageIconUrl>https://avatars2.githubusercontent.com/u/7193540</PackageIconUrl>
+    <RepositoryUrl>https://github.com/KelsonBall/Kelson.Common.Transforms</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/KelsonBall/Kelson.Common.Transforms</PackageProjectUrl>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Memory" Version="4.5.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Kelson.Common.Vectors\Kelson.Common.Vectors.csproj" />
+  </ItemGroup>
+</Project>

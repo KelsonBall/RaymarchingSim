@@ -1,0 +1,21 @@
+<Translation>
+    <Transform>
+        <Subtract>
+            <Color>
+                <Subtract>
+                    <Sphere />
+                    <Translation>
+                        <Color>
+                            <Sphere />
+                        </Color>
+                    </Translation>
+                </Subtract>
+            </Color>
+            <Translation>
+                <Color>
+                    <Box />
+                </Color>
+            </Translation>
+        </Subtract>
+    </Transform>    
+</Translation>
