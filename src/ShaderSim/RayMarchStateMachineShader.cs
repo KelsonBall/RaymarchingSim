@@ -22,272 +22,292 @@ namespace ShaderSim
 
         public RayMarchStateMachineShader(RaymarchScene scene, vec3 backgroundColor = default)
         {
-            this.scene = scene;
-            State = new byte[scene.NodeEntities.Length];
-            Value = new double[scene.NodeEntities.Length];
-            Color = new vec3[scene.NodeEntities.Length];
-            Position = new vec3[scene.NodeEntities.Length];
+            this.scene = scene;            
             BackgroundColor = backgroundColor;
         }
 
-        protected readonly byte[] State;
 
-        protected readonly double[] Value;
-
-        protected readonly vec3[] Color;
-
-        protected readonly vec3[] Position;
-
-        protected int Index;
-        protected int Next;
+        protected struct MarchStep
+        {
+            public uint Index;
+            public uint Next;
+            public uint State;
+            public double Value;
+            public double LeftValue;
+            public double RightValue;
+            public vec3 Color;
+            public vec3 LeftColor;
+            public vec3 RightColor;
+            public vec3 Position;
+            public vec3 LeftPosition;
+            public vec3 RightPosition;            
+        }
 
         const byte DONE = 0xFF;
-
-        protected void ClearState()
+       
+        protected void HandleColorOp(ref MarchStep step)
         {
-            for (int i = 0; i < State.Length; i++)
-                State[i] = 0;
-            // no need to clear Value or Color, past runs shouldn't effect Value or Color state
-        }
-
-        protected void HandleColorOp()
-        {
-            var node = scene.NodeEntities[Index];
-            var state = State[Index];
+            var node = scene.NodeEntities[step.Index];
             
-            if (state == 0)
+            if (step.State == 0)
             {
-                State[Index] = 1;
-                Color[Index] = scene.Vector3Entities[node.ParameterId];
-                Position[node.Left] = Position[Index];
-                Next = node.Left;
+                step.State = 1;
+                step.Color = scene.Vector3Entities[node.Parameter];
+                step.LeftPosition = step.Position;
+                step.Next = node.Left;
             }
-            else if (state == 1) 
+            else if (step.State == 1) 
             {
-                Value[Index] = Value[node.Left];
-                State[Index] = DONE;
-                Next = node.Parent;
+                step.Value = step.LeftValue;
+                step.State = DONE;
+                step.Next = node.Parent;
             }            
         }
 
-        protected void HandleUnionOp()
+        protected void HandleUnionOp(ref MarchStep step)
         {
-            var node = scene.NodeEntities[Index];
-            var state = State[Index];
+            var node = scene.NodeEntities[step.Index];
             
-            if (state == 0)
+            
+            if (step.State == 0)
             {
-                State[Index] = 1;
-                Position[node.Left] = Position[Index];
-                Next = node.Left;
+                step.State = 1;
+                step.LeftPosition = step.Position;
+                step.Next = node.Left;
             }
-            else if (state == 1)
+            else if (step.State == 1)
             {
-                State[Index] = 2;
-                Position[node.Right] = Position[Index];
-                Next = node.Right;
+                step.State = 2;
+                step.RightPosition = step.Position;
+                step.Next = node.Right;
             }
-            else if (state == 2)
+            else if (step.State == 2)
             {                
-                if (Value[node.Left] < Value[node.Right])
+                if (step.LeftValue < step.RightValue)
                 {
-                    Value[Index] = Value[node.Left];
-                    Color[Index] = Color[node.Left];
+                    step.Value = step.LeftValue;
+                    step.Color = step.LeftColor;
                 }
                 else
                 {
-                    Value[Index] = Value[node.Right];
-                    Color[Index] = Color[node.Right];
+                    step.Value = step.RightValue;
+                    step.Color = step.RightColor;
                 }
-                State[Index] = DONE;
-                Next = node.Parent;
+                step.State = DONE;
+                step.Next = node.Parent;
             }
         }
 
-        protected void HandleIntersectionOp()
+        protected void HandleIntersectionOp(ref MarchStep step)
         {
-            var node = scene.NodeEntities[Index];
-            var state = State[Index];
+            var node = scene.NodeEntities[step.Index];
+            
 
-            if (state == 0)
+            if (step.State == 0)
             {
-                State[Index] = 1;
-                Position[node.Left] = Position[Index];
-                Next = node.Left;
+                step.State = 1;
+                step.LeftPosition = step.Position;
+                step.Next = node.Left;
             }
-            else if (state == 1)
+            else if (step.State == 1)
             {
-                State[Index] = 2;
-                Position[node.Right] = Position[Index];
-                Next = node.Right;
+                step.State = 2;
+                step.RightPosition = step.Position;
+                step.Next = node.Right;
             }
-            else if (state == 2)
+            else if (step.State == 2)
             {
-                if (Value[node.Left] > Value[node.Right])
+                if (step.LeftValue > step.RightValue)
                 {
-                    Value[Index] = Value[node.Left];
-                    Color[Index] = Color[node.Left];
+                    step.Value = step.LeftValue;
+                    step.Color = step.LeftColor;
                 }
                 else
                 {
-                    Value[Index] = Value[node.Right];
-                    Color[Index] = Color[node.Right];
+                    step.Value = step.RightValue;
+                    step.Color = step.RightColor;
                 }
-                State[Index] = DONE;
-                Next = node.Parent;
+                step.State = DONE;
+                step.Next = node.Parent;
             }            
         }
 
-        protected void HandleSubtractionOp()
+        protected void HandleSubtractionOp(ref MarchStep step)
         {
-            var node = scene.NodeEntities[Index];
-            var state = State[Index];
+            var node = scene.NodeEntities[step.Index];
+            
 
-            if (state == 0)
+            if (step.State == 0)
             {
-                State[Index] = 1;
-                Position[node.Left] = Position[Index];
-                Next = node.Left;
+                step.State = 1;
+                step.LeftPosition = step.Position;
+                step.Next = node.Left;
             }
-            else if (state == 1)
+            else if (step.State == 1)
             {
-                State[Index] = 2;
-                Position[node.Right] = Position[Index];
-                Next = node.Right;
+                step.State = 2;
+                step.RightPosition = step.Position;
+                step.Next = node.Right;
             }
-            else if (state == 2)
+            else if (step.State == 2)
             {
-                if (Value[node.Left] > -Value[node.Right])
+                if (step.LeftValue > -step.RightValue)
                 {
-                    Value[Index] = Value[node.Left];
-                    Color[Index] = Color[node.Left];
+                    step.Value = step.LeftValue;
+                    step.Color = step.LeftColor;
                 }
                 else
                 {
-                    Value[Index] = -Value[node.Right];
-                    Color[Index] = Color[node.Right];
+                    step.Value = -step.RightValue;
+                    step.Color = step.RightColor;
                 }
-                State[Index] = DONE;
-                Next = node.Parent;
+                step.State = DONE;
+                step.Next = node.Parent;
             }            
         }
 
-        protected void HandleTransformOp()
+        protected void HandleTransformOp(ref MarchStep step)
         {
-            var node = scene.NodeEntities[Index];
-            var state = State[Index];
+            var node = scene.NodeEntities[step.Index];
+            
 
-            if (state == 0)
+            if (step.State == 0)
             { 
-                State[Index] = 1;
-                var mat = scene.MatrixEntities[node.ParameterId];
-                var pos = Position[Index];
-                Position[node.Left] = mat.AppliedTo(pos);
-                Next = node.Left;
+                step.State = 1;
+                var mat = scene.MatrixEntities[node.Parameter];
+                var pos = step.Position;
+                step.LeftPosition = mat.AppliedTo(pos);
+                step.Next = node.Left;
             }
-            else if (state == 1)
+            else if (step.State == 1)
             {
-                State[Index] = DONE;
-                Value[Index] = Value[node.Left];
-                Color[Index] = Color[node.Left];
-                Next = node.Parent;
+                step.State = DONE;
+                step.Value = step.LeftValue;
+                step.Color = step.LeftColor;
+                step.Next = node.Parent;
             }
         }
 
-        protected void HandleTranslationOp()
+        protected void HandleTranslationOp(ref MarchStep step)
         {
-            var node = scene.NodeEntities[Index];
-            var state = State[Index];
+            var node = scene.NodeEntities[step.Index];
+            
 
-            if (state == 0)
+            if (step.State == 0)
             {
-                State[Index] = 1;
-                var vec = scene.Vector3Entities[node.ParameterId];
-                var pos = Position[Index];
-                Position[node.Left] = pos + vec;
-                Next = node.Left;
+                step.State = 1;
+                var vec = scene.Vector3Entities[node.Parameter];
+                var pos = step.Position;
+                step.LeftPosition = pos + vec;
+                step.Next = node.Left;
             }
-            else if (state == 1)
+            else if (step.State == 1)
             {
-                State[Index] = DONE;
-                Value[Index] = Value[node.Left];
-                Color[Index] = Color[node.Left];
-                Next = node.Parent;
+                step.State = DONE;
+                step.Value = step.LeftValue;
+                step.Color = step.LeftColor;
+                step.Next = node.Parent;
             }
         }
 
-        protected void HandleSphereOp()
+        protected void HandleSphereOp(ref MarchStep step)
         {
-            var node = scene.NodeEntities[Index];            
+            var node = scene.NodeEntities[step.Index];            
 
-            Value[Index] = Position[Index].Magnitude() - scene.DoubleEntities[node.ParameterId];
+            step.Value = step.Position.Magnitude() - scene.DoubleEntities[node.Parameter];
 
-            Next = node.Parent;            
+            step.Next = node.Parent;            
         }
 
-        protected void HandleBoxOp()
+        protected void HandleBoxOp(ref MarchStep step)
         {
-            var node = scene.NodeEntities[Index];
+            var node = scene.NodeEntities[step.Index];
 
-            var position = Position[Index];
-            var size = scene.DoubleEntities[node.ParameterId];
+            var position = step.Position;
+            var size = scene.DoubleEntities[node.Parameter];
             var d = new vec3(Math.Abs(position.X), Math.Abs(position.Y), Math.Abs(position.Z)) - (size, size, size);
             var inside = Math.Min(Math.Max(d.X, Math.Max(d.Y, d.Z)), 0);
             var outside = new vec3(Math.Max(d.X, 0), Math.Max(d.Y, 0), Math.Max(d.Z, 0)).Magnitude();
-            Value[Index] = inside + outside;
+            step.Value = inside + outside;
 
-            Next = node.Parent;
+            step.Next = node.Parent;
         }
         
         protected MarchResult Sdf_March(vec3 initial)
         {
-            ClearState();
-            Index = 0;
-            Position[Index] = initial;
+            var steps = new MarchStep[scene.NodeEntities.Length];
+            
+            steps[0].Position = initial;
+            uint index = 0;            
+
             while (true)
             {
-                switch (scene.NodeEntities[Index].Operation)
+                var node = scene.NodeEntities[index];
+
+                if (node.Left > 0)
+                {
+                    steps[index].LeftValue = steps[node.Left].Value;
+                    steps[index].LeftColor = steps[node.Left].Color;
+                }
+
+                if (node.Right > 0)
+                {
+                    steps[index].RightValue = steps[node.Right].Value;
+                    steps[index].RightColor = steps[node.Right].Color;
+                }
+
+
+                steps[index].Index = index;
+                switch (scene.NodeEntities[index].Operation)
                 {
                     case OpType3d.Color:
-                        HandleColorOp();
+                        HandleColorOp(ref steps[index]);
                         break;
                     case OpType3d.CsgUnion:
-                        HandleUnionOp();
+                        HandleUnionOp(ref steps[index]);
                         break;
                     case OpType3d.CsgIntersect:
-                        HandleIntersectionOp();
+                        HandleIntersectionOp(ref steps[index]);
                         break;
                     case OpType3d.CsgSubtract:
-                        HandleSubtractionOp();
+                        HandleSubtractionOp(ref steps[index]);
                         break;
                     case OpType3d.SpatialTransform:
-                        HandleTransformOp();
+                        HandleTransformOp(ref steps[index]);
                         break;
                     case OpType3d.SpatialTranslation:
-                        HandleTranslationOp();
+                        HandleTranslationOp(ref steps[index]);
                         break;
                     case OpType3d.ShapeSphere:
-                        HandleSphereOp();
+                        HandleSphereOp(ref steps[index]);
                         break;
                     case OpType3d.ShapeBox:
-                        HandleBoxOp();
+                        HandleBoxOp(ref steps[index]);
                         break;
                     default:
                         throw new InvalidOperationException();
                 }
-                Index = Next;
-                if (Index == 0 && State[Index] == 0xFF)
+                
+                if (node.Left > 0)                
+                    steps[node.Left].Position = steps[index].LeftPosition;
+                    
+                if (node.Right > 0)                
+                    steps[node.Right].Position = steps[index].RightPosition;                                    
+
+                index = steps[index].Next;
+
+                if (index == 0 && steps[index].State == 0xFF)
                     break;
             }
 
-            return new MarchResult(Value[Index], Color[Index]);
+            return new MarchResult(steps[0].Value, steps[0].Color);
         }
 
         protected const double FieldOfView = Math.PI / 3.5;
         protected const int MarchLimit = 250;
         protected const double DrawDistance = 30;
         protected const double MinStepLength = 0.025;
-        protected const double NormalEpsilon = 0.01;
+        protected const double NormalEpsilon = 0.1;
 
         protected vec3 getUvRay(double fov, vec2 uv, vec2 size)
         {
@@ -298,11 +318,14 @@ namespace ShaderSim
 
         protected vec3 estimateNormal(vec3 p)
         {
-            return new vec3(
+            var dir = new vec3(
                 Sdf_March(new vec3(p.X + NormalEpsilon, p.Y, p.Z)).Value - Sdf_March(new vec3(p.X - NormalEpsilon, p.Y, p.Z)).Value,
                 Sdf_March(new vec3(p.X, p.Y + NormalEpsilon, p.Z)).Value - Sdf_March(new vec3(p.X, p.Y - NormalEpsilon, p.Z)).Value,
                 Sdf_March(new vec3(p.X, p.Y, p.Z + NormalEpsilon)).Value - Sdf_March(new vec3(p.X, p.Y, p.Z - NormalEpsilon)).Value
-            ).Unit();
+            );
+            var normal = dir.Unit();
+
+            return normal;
         }
 
         public virtual vec4 Run(vec2 xy, vec2 wh)

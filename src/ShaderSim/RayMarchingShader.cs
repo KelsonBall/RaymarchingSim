@@ -26,7 +26,7 @@ namespace ShaderSim
             BackgroundColor = backgroundColor;
         }
 
-        protected virtual MarchResult Sdf_March(vec3 position, int node)
+        protected virtual MarchResult Sdf_March(vec3 position, uint node)
         {
             var entity = scene.NodeEntities[node];
             MarchResult left_result;
@@ -36,7 +36,7 @@ namespace ShaderSim
                 case OpType3d.Color:
                     left_result = Sdf_March(position, entity.Left);
                     if (left_result.Color == new vec3(0, 0, 0))
-                        return new MarchResult(Sdf_March(position, entity.Left).Value, scene.Vector3Entities[entity.ParameterId]);
+                        return new MarchResult(Sdf_March(position, entity.Left).Value, scene.Vector3Entities[entity.Parameter]);
                     else
                         return left_result;
                 case OpType3d.CsgUnion:
@@ -62,13 +62,13 @@ namespace ShaderSim
                     else
                         return right_result;
                 case OpType3d.SpatialTransform:
-                    return Sdf_March(scene.MatrixEntities[entity.ParameterId].AppliedTo(in position), entity.Left);                    
+                    return Sdf_March(scene.MatrixEntities[entity.Parameter].AppliedTo(in position), entity.Left);                    
                 case OpType3d.SpatialTranslation:
-                    return Sdf_March(position + scene.Vector3Entities[entity.ParameterId], entity.Left);                
+                    return Sdf_March(position + scene.Vector3Entities[entity.Parameter], entity.Left);                
                 case OpType3d.ShapeSphere:
-                    return new MarchResult(position.Magnitude() - scene.DoubleEntities[entity.ParameterId], (0, 0, 0));
+                    return new MarchResult(position.Magnitude() - scene.DoubleEntities[entity.Parameter], (0, 0, 0));
                 case OpType3d.ShapeBox:                    
-                    var size = scene.DoubleEntities[entity.ParameterId];
+                    var size = scene.DoubleEntities[entity.Parameter];
                     var d = new vec3(Math.Abs(position.X), Math.Abs(position.Y), Math.Abs(position.Z)) - (size, size, size);
                     var inside = Math.Min(Math.Max(d.X, Math.Max(d.Y, d.Z)), 0);
                     var outside = new vec3(Math.Max(d.X, 0), Math.Max(d.Y, 0), Math.Max(d.Z, 0)).Magnitude();

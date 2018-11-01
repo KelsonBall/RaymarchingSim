@@ -17,7 +17,7 @@ namespace RaymarchingScenes
                         new SubtractNode(
                             new SphereNode(5),
                             new TranslationNode((-5.5, 0, -1),
-                                new ColorNode((1, 0, 0),
+                                new ColorNode((0.3, 0.3, 0),
                                     new SphereNode(5)
                                 )
                             )

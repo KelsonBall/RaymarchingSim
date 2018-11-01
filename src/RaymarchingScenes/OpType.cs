@@ -1,6 +1,6 @@
 ﻿namespace RaymarchingScenes
 {
-    public enum OpType3d : byte
+    public enum OpType3d : uint
     {
         Empty = 0,
 
