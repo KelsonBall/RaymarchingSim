@@ -1,9 +1,44 @@
 ﻿using System;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Kelson.Common.Vectors
 {
+    public readonly partial struct SimdVec4 : IVector<SimdVec4>
+    {
+        private readonly Vector<float> vec;
+
+        public double X => vec[0];
+
+        public double Y => vec[1];
+
+        public double Z => vec[2];
+
+        public double W => vec[3];
+
+        internal SimdVec4(Vector<float> v) => vec = v;
+
+        public SimdVec4 Add(in SimdVec4 other) => new SimdVec4(vec + other.vec);
+
+        public double AngularMagnitude(in SimdVec4 other)
+        {
+            throw new NotImplementedException();
+        }
+
+        public double Dot(in SimdVec4 other) => Vector.Dot(vec, other.vec);
+
+        public double Magnitude() => Math.Sqrt(Vector.Dot(vec, vec));
+
+        public double MagnitudeSquared() => Vector.Dot(vec, vec);
+
+        public SimdVec4 Scale(double scalar) => new SimdVec4(Vector.Multiply((float)scalar, vec));
+
+        public SimdVec4 Sub(in SimdVec4 other) => new SimdVec4(Vector.Subtract(vec, other.vec));
+
+        public SimdVec4 Unit() => new SimdVec4(Vector.Multiply((float)(1 / Magnitude()), vec));
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public readonly partial struct vec4 : IVector<vec4>
     {

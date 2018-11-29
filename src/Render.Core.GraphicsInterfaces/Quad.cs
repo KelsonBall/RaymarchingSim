@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace Render.Core.GraphicsInterfaces
 {
     public abstract class Quad
-    {        
+    {
         [Uniform]
         public vec2 Origin { get; set; }
         [Uniform]
@@ -128,7 +128,7 @@ uniform vec2 Size;
 uniform vec2 Resolution;
 
 void main()
-{        
+{
     float scale_x = Size.x / (Resolution.x / 2);
     float scale_y = Size.y / (Resolution.y / 2);
     float origin_x = (Origin.x / Resolution.x) * 2;
@@ -155,7 +155,7 @@ void main()
         private readonly List<ShaderInput> uniforms = new List<ShaderInput>();
 
         public Quad(ManagedGraphicsService graphics)
-        {                        
+        {
             var sourceTask = Source();
             uniforms.AddRange(GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => new ShaderInput(this, p)));
             this.graphics = graphics;
@@ -165,8 +165,8 @@ void main()
                 buffer = graphics.CreateVertexBuffer(new vec2[] { (0f, 0f), (0f, 1f), (1f, 1f), (1f, 0f) });
                 string source = sourceTask.Result;
                 foreach (var input in uniforms.Select(i => i.ShaderSource()))
-                    Debug.Assert(source.Contains(input));                
-                program = graphics.CreateProgram(VERTEX_SHADER_SOURCE, source);                
+                    Debug.Assert(source.Contains(input));
+                program = graphics.CreateProgram(VERTEX_SHADER_SOURCE, source);
             }
         }
 

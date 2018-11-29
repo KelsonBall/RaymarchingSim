@@ -10,7 +10,7 @@ namespace Render.Core.GraphicsInterface
     public class ManagedGraphicsService : IDisposable
     {
         public event Action<int, int> ViewportChanged;
-        
+
         public int Width { get; private set; }
         public int Height { get; private set; }
 
@@ -42,7 +42,7 @@ namespace Render.Core.GraphicsInterface
             gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
             gl.ClearColor(0.2f, 0.3f, 0.4f, 1f);
             gl.MatrixMode(MatrixMode.Modelview);
-            gl.LoadIdentity();            
+            gl.LoadIdentity();
             gl.BindVertexArray(0);
             gl.BindBuffer(BufferTarget.ArrayBuffer, 0);
         }

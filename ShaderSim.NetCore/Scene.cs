@@ -23,8 +23,12 @@ namespace ShaderSim.NetCore
         [Uniform]
         public double NormalEpsilon { get; set; }
 
+        public double FieldOfView { set => _halfTanFov = Math.Tan(value) / 2; }
+
+        private double _halfTanFov;
+
         [Uniform]
-        public double FieldOfView { get; set; }
+        public double HalfTanFoV { get => _halfTanFov; }
 
         [Uniform]
         public int MarchLimit { get; set; }

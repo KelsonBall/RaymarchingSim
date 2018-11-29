@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using Kelson.Common.Vectors;
 using RaymarchingScenes;
 
@@ -22,7 +21,7 @@ namespace ShaderSim
 
         public RayMarchStateMachineShader(RaymarchScene scene, vec3 backgroundColor = default)
         {
-            this.scene = scene;            
+            this.scene = scene;
             BackgroundColor = backgroundColor;
         }
 
@@ -40,15 +39,15 @@ namespace ShaderSim
             public vec3 RightColor;
             public vec3 Position;
             public vec3 LeftPosition;
-            public vec3 RightPosition;            
+            public vec3 RightPosition;
         }
 
         const byte DONE = 0xFF;
-       
+
         protected void HandleColorOp(ref MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-            
+
             if (step.State == 0)
             {
                 step.State = 1;
@@ -56,19 +55,19 @@ namespace ShaderSim
                 step.LeftPosition = step.Position;
                 step.Next = node.Left;
             }
-            else if (step.State == 1) 
+            else if (step.State == 1)
             {
                 step.Value = step.LeftValue;
                 step.State = DONE;
                 step.Next = node.Parent;
-            }            
+            }
         }
 
         protected void HandleUnionOp(ref MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-            
-            
+
+
             if (step.State == 0)
             {
                 step.State = 1;
@@ -82,7 +81,7 @@ namespace ShaderSim
                 step.Next = node.Right;
             }
             else if (step.State == 2)
-            {                
+            {
                 if (step.LeftValue < step.RightValue)
                 {
                     step.Value = step.LeftValue;
@@ -101,7 +100,7 @@ namespace ShaderSim
         protected void HandleIntersectionOp(ref MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-            
+
 
             if (step.State == 0)
             {
@@ -129,13 +128,13 @@ namespace ShaderSim
                 }
                 step.State = DONE;
                 step.Next = node.Parent;
-            }            
+            }
         }
 
         protected void HandleSubtractionOp(ref MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-            
+
 
             if (step.State == 0)
             {
@@ -163,16 +162,16 @@ namespace ShaderSim
                 }
                 step.State = DONE;
                 step.Next = node.Parent;
-            }            
+            }
         }
 
         protected void HandleTransformOp(ref MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-            
+
 
             if (step.State == 0)
-            { 
+            {
                 step.State = 1;
                 var mat = scene.MatrixEntities[node.Parameter];
                 var pos = step.Position;
@@ -191,7 +190,7 @@ namespace ShaderSim
         protected void HandleTranslationOp(ref MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-            
+
 
             if (step.State == 0)
             {
@@ -212,11 +211,11 @@ namespace ShaderSim
 
         protected void HandleSphereOp(ref MarchStep step)
         {
-            var node = scene.NodeEntities[step.Index];            
+            var node = scene.NodeEntities[step.Index];
 
             step.Value = step.Position.Magnitude() - scene.DoubleEntities[node.Parameter];
 
-            step.Next = node.Parent;            
+            step.Next = node.Parent;
         }
 
         protected void HandleBoxOp(ref MarchStep step)
@@ -232,13 +231,13 @@ namespace ShaderSim
 
             step.Next = node.Parent;
         }
-        
+
         protected MarchResult Sdf_March(vec3 initial)
         {
             var steps = new MarchStep[scene.NodeEntities.Length];
-            
+
             steps[0].Position = initial;
-            uint index = 0;            
+            uint index = 0;
 
             while (true)
             {
@@ -287,12 +286,12 @@ namespace ShaderSim
                     default:
                         throw new InvalidOperationException();
                 }
-                
-                if (node.Left > 0)                
+
+                if (node.Left > 0)
                     steps[node.Left].Position = steps[index].LeftPosition;
-                    
-                if (node.Right > 0)                
-                    steps[node.Right].Position = steps[index].RightPosition;                                    
+
+                if (node.Right > 0)
+                    steps[node.Right].Position = steps[index].RightPosition;
 
                 index = steps[index].Next;
 
@@ -331,9 +330,6 @@ namespace ShaderSim
         public virtual vec4 Run(vec2 xy, vec2 wh)
         {
             var ray = getUvRay(FieldOfView, xy, wh);
-
-            //if (xy.X == 89 && xy.Y == 77)
-            //    Debugger.Break();
 
             vec3 position = (0, 0, 0);
             var last_result = Sdf_March(position);

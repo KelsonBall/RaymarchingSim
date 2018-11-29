@@ -1,13 +1,15 @@
 ﻿using Kelson.Common.Transforms;
 using Kelson.Common.Vectors;
-using Render.Core.GraphicsInterfaces;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace Render.Core.GraphicsInterface
 {
     public class ShaderProgram : IManagedAssetHandle
     {
-        internal Transform viewTransform;        
+        internal Transform viewTransform;
 
         internal ShaderProgram(ManagedGraphicsService graphics, string vertexSource, string fragmentSource)
         {
@@ -27,7 +29,7 @@ namespace Render.Core.GraphicsInterface
 
         private void SetViewTransform(int x, int y)
         {
-            viewTransform = Transform.Identity().Multiply(Transform.Translation((-1f, -1f, 0f))).Multiply(Transform.Scale(2.0 / x, 2.0 / y, 1.0));            
+            viewTransform = Transform.Identity().Multiply(Transform.Translation((-1f, -1f, 0f))).Multiply(Transform.Scale(2.0 / x, 2.0 / y, 1.0));
         }
 
         private readonly ManagedGraphicsService graphics;
@@ -54,7 +56,25 @@ namespace Render.Core.GraphicsInterface
             }
         }
 
+        public void SetUniformDouble(string name, double value)
+        {
+            using (Binding())
+            {
+                int loc = graphics.gl.GetUniformLocation(handle, name);
+                graphics.gl.Uniform1(loc, value);
+            }
+        }
+
         public void SetUniformInteger(string name, int value)
+        {
+            using (Binding())
+            {
+                int loc = graphics.gl.GetUniformLocation(handle, name);
+                graphics.gl.Uniform1(loc, value);
+            }
+        }
+
+        public void SetUniformUint(string name, uint value)
         {
             using (Binding())
             {
@@ -99,6 +119,42 @@ namespace Render.Core.GraphicsInterface
                 graphics.gl.Uniform2(loc, 1, vector.AsSpan().ToArray());
             }
         }
+
+        private static readonly Dictionary<Type, string> firstElementNames = new Dictionary<Type, string>();
+
+        private string getFirstElementName<T>() where T : struct
+        {
+            var t = typeof(T);
+            if (firstElementNames.ContainsKey(t))
+                return firstElementNames[t];
+
+            var fields = t.GetFields();
+
+            var layout = (StructLayoutAttribute)t.GetCustomAttributes(typeof(StructLayoutAttribute), false).Single();
+
+            if (layout.Value == LayoutKind.Sequential)
+                firstElementNames[t] = fields.First().Name;
+            else if (layout.Value == LayoutKind.Explicit)
+                firstElementNames[t] =
+                    fields.OrderBy(f =>
+                        ((FieldOffsetAttribute)f.GetCustomAttributes(typeof(FieldOffsetAttribute), false).Single()).Value)
+                        .First()
+                        .Name;
+            else
+                throw new InvalidOperationException("Uniform structs must have sequential or explicit layout");
+
+            return firstElementNames[t];
+        }
+
+        //public void SetUniformStruct<T>(string name, T value) where T : struct
+        //{
+        //    string field_name = getFirstElementName<T>();
+        //    using (Binding())
+        //    {
+        //        int loc = graphics.gl.GetUniformLocation(handle, $"{name}.{field_name}");
+        //        graphics.gl.Uniform1(loc, value);
+        //    }
+        //}
 
         //public void SetUniformTexture(string name, Texture texture)
         //{
