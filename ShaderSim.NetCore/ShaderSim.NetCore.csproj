@@ -6,6 +6,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="MarchSceneShader - Copy.glsl" />
+    <None Remove="MarchSceneShader.glsl" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="MarchSceneShader - Copy.glsl" />
+    <EmbeddedResource Include="MarchSceneShader.glsl" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\src\RaymarchingScenes\RaymarchingScenes.csproj" />
     <ProjectReference Include="..\src\Render.Core.GraphicsInterfaces\Render.Core.GraphicsInterfaces.csproj" />
   </ItemGroup>

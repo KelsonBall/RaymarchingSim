@@ -1,10 +1,11 @@
-﻿#version 410
+﻿#version 430
 
-const uint MAX_ENTITY_COUNT = 64;
+const uint MAX_ENTITY_COUNT = 30;
 
-uniform vec3 BackgroundColor;
+uniform vec4 BackgroundColor;
 uniform vec2 Origin;
 uniform vec2 Size;
+uniform vec2 Resolution;
 uniform double DrawDistance;
 uniform double MinStepLength;
 uniform double NormalEpsilon;
@@ -60,7 +61,7 @@ struct MarchStep
 	vec3 RightPosition;
 };
 
-void HandleColorOp(inout MarchStep step)
+MarchStep HandleColorOp(MarchStep step)
 {
     Node node = NodeEntities[step.Index];
 
@@ -77,9 +78,11 @@ void HandleColorOp(inout MarchStep step)
         step.State = DONE;
         step.Next = node.Parent;
     }
+
+	return step;
 }
 
-void HandleUnionOp(inout MarchStep step)
+MarchStep HandleUnionOp(MarchStep step)
 {
     Node node = NodeEntities[step.Index];
 
@@ -110,9 +113,11 @@ void HandleUnionOp(inout MarchStep step)
         step.State = DONE;
         step.Next = node.Parent;
     }
+
+	return step;
 }
 
-void HandleIntersectionOp(inout MarchStep step)
+MarchStep HandleIntersectionOp(MarchStep step)
 {
     Node node = NodeEntities[step.Index];
 
@@ -143,9 +148,11 @@ void HandleIntersectionOp(inout MarchStep step)
         step.State = DONE;
         step.Next = node.Parent;
     }
+
+	return step;
 }
 
-void HandleSubtractionOp(inout MarchStep step)
+MarchStep HandleSubtractionOp(MarchStep step)
 {
     Node node = NodeEntities[step.Index];
 
@@ -176,9 +183,11 @@ void HandleSubtractionOp(inout MarchStep step)
         step.State = DONE;
         step.Next = node.Parent;
     }
+
+	return step;
 }
 
-void HandleTransformOp(inout MarchStep step)
+MarchStep HandleTransformOp(MarchStep step)
 {
     Node node = NodeEntities[step.Index];
 
@@ -195,9 +204,11 @@ void HandleTransformOp(inout MarchStep step)
         step.Color = step.LeftColor;
         step.Next = node.Parent;
     }
+
+	return step;
 }
 
-void HandleTranslationOp(inout MarchStep step)
+MarchStep HandleTranslationOp(MarchStep step)
 {
     Node node = NodeEntities[step.Index];
 
@@ -214,37 +225,43 @@ void HandleTranslationOp(inout MarchStep step)
         step.Color = step.LeftColor;
         step.Next = node.Parent;
     }
+
+	return step;
 }
 
-void HandleSphereOp(inout MarchStep step)
+MarchStep HandleSphereOp(MarchStep step)
 {
     Node node = NodeEntities[step.Index];
 
     step.Value = length(step.Position) - DoubleEntities[node.Parameter];
-
     step.Next = node.Parent;
+
+	return step;
 }
 
-void HandleBoxOp(inout MarchStep step)
-{
-    Node node = NodeEntities[step.Index];
-
-    double size = DoubleEntities[node.Parameter];
-    vec3 d = vec3(abs(step.Position.x), abs(step.Position.y), abs(step.Position.z) ) - vec3(size, size, size);
-    double inside = min(max(d.x, max(d.y, d.z)), 0);
-    double outside = length(vec3(max(d.x, 0), max(d.y, 0), max(d.z, 0)));
-	step.Value = inside + outside;
-    step.Next = node.Parent;
-}
+//MarchStep HandleBoxOp(MarchStep step)
+//{
+//    Node node = NodeEntities[step.Index];
+//
+//    double size = DoubleEntities[node.Parameter];
+//    vec3 d = vec3(abs(step.Position.x), abs(step.Position.y), abs(step.Position.z) ) - vec3(size, size, size);
+//    double inside = min(max(d.x, max(d.y, d.z)), 0);
+//    double outside = length(vec3(max(d.x, 0), max(d.y, 0), max(d.z, 0)));
+//	step.Value = inside + outside;
+//    step.Next = node.Parent;
+//
+//	return step;
+//}
 
 MarchResult Sdf_March(vec3 initial)
 {
-    MarchStep steps[MAX_ENTITY_COUNT];
-
+    MarchStep steps[13];
     steps[0].Position = initial;
-    uint index = 0;
+	
+    uint index = 0;	
+	bool running = true;
 
-    while (true)
+    while (running)
     {
         Node node = NodeEntities[index];
 
@@ -260,35 +277,39 @@ MarchResult Sdf_March(vec3 initial)
             steps[index].RightColor = steps[node.Right].Color;
         }
 
-
         steps[index].Index = index;
+		
+		MarchStep stepResult;
+		
         switch (NodeEntities[index].Operation)
         {
             case OpType3d_Color:
-                HandleColorOp(steps[index]);
+                stepResult = HandleColorOp(steps[index]);
                 break;
             case OpType3d_CsgUnion:
-                HandleUnionOp(steps[index]);
+                stepResult = HandleUnionOp(steps[index]);
                 break;
             case OpType3d_CsgIntersect:
-                HandleIntersectionOp(steps[index]);
+                stepResult = HandleIntersectionOp(steps[index]);
                 break;
             case OpType3d_CsgSubtract:
-                HandleSubtractionOp(steps[index]);
+                stepResult = HandleSubtractionOp(steps[index]);
                 break;
             case OpType3d_SpatialTransform:
-                HandleTransformOp(steps[index]);
+                stepResult = HandleTransformOp(steps[index]);
                 break;
             case OpType3d_SpatialTranslation:
-                HandleTranslationOp(steps[index]);
+                stepResult = HandleTranslationOp(steps[index]);
                 break;
             case OpType3d_ShapeSphere:
-                HandleSphereOp(steps[index]);
+                stepResult = HandleSphereOp(steps[index]);
                 break;
             case OpType3d_ShapeBox:
-                HandleBoxOp(steps[index]);
+                stepResult = HandleBoxOp(steps[index]);
                 break;
         }
+
+		steps[index] = stepResult;
 
         if (node.Left > 0)
             steps[node.Left].Position = steps[index].LeftPosition;
@@ -298,15 +319,11 @@ MarchResult Sdf_March(vec3 initial)
 
         index = steps[index].Next;
 
-        if (index == 0 && steps[index].State == 0xFF)
-            break;
+        if (index == 0 && steps[index].State == DONE)
+            running = false;
     }
-
-	MarchResult result;
-	result.Value = steps[0].Value;
-	result.Color = steps[0].Color;
-
-    return result;
+	
+    return MarchResult(steps[0].Value, steps[0].Color);
 }
 
 
@@ -337,17 +354,27 @@ void main()
 	vec3 ray = getUvRay(xy, Size);
 
     vec3 position = vec3(0, 0, 0);
-    MarchResult last_result = Sdf_March(position);
+    MarchResult last_result = Sdf_March(position + (ray * 5));
+
+	double v = last_result.Value - 13;
+
+	double saturation = min(1, max(0, v * v));
+
+	outColor = vec4(saturation, saturation, saturation, 1.0);
+	return;
+
     double traveled = 0;
 
     for (int marches = 0; marches < MarchLimit; marches++)
     {
         if (last_result.Value < MinStepLength)
         {
-            vec3 normal = estimateNormal(position);
-            double value = length(normal - vec3(0, 1, 0)) - 0.8;
-
-            outColor = vec4(last_result.Color * min(max(value, 0.0), 1.0), 1.0);
+//            vec3 normal = estimateNormal(position);
+//            double value = length(normal - vec3(0, 1, 0)) - 0.8;
+//
+//            outColor = vec4(last_result.Color * min(max(value, 0.0), 1.0), 1.0);
+			outColor = vec4(last_result.Color, 1.0);
+//			outColor = vec4(0.1, 0.3, 0.7, 1.0);
 			return;
         }
 
@@ -361,5 +388,5 @@ void main()
         last_result = Sdf_March(position);
     }
 
-    outColor = vec4(BackgroundColor, 1.0);
+    outColor = BackgroundColor;
 }

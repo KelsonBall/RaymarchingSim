@@ -22,7 +22,8 @@ void main (void)
             this.graphics = graphics;
             handle = graphics.gl.CreateShader(ShaderType.FragmentShader);
             string version = graphics.gl.GetString(StringName.ShadingLanguageVersion);
-            program = $"#version {version.Split(' ').First().Replace(".", "")}\r\n" + program;
+            if (!program.StartsWith("#version"))
+                program = $"#version {version.Split(' ').First().Replace(".", "")}\r\n" + program;
             graphics.gl.ShaderSource(handle, program);
             graphics.gl.CompileShader(handle);
             var log = graphics.gl.GetShaderInfoLog(handle);

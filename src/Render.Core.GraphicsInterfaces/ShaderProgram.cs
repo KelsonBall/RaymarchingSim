@@ -1,5 +1,6 @@
 ﻿using Kelson.Common.Transforms;
 using Kelson.Common.Vectors;
+using OpenTK.Graphics.OpenGL;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,13 +8,55 @@ using System.Runtime.InteropServices;
 
 namespace Render.Core.GraphicsInterface
 {
+    public class ShaderBufferObject : IManagedAssetHandle
+    {
+        public ManagedGraphicsService GraphicsService { get; }
+
+        public int Handle { get; }
+
+        public int LayoutQualifier { get; }
+
+        protected ShaderBufferObject(ManagedGraphicsService graphics, int layoutQualifier)
+        {
+            GraphicsService = graphics;
+            LayoutQualifier = layoutQualifier;
+            Handle = graphics.gl.GenBuffer();
+        }
+
+        public AssetBinding Binding()
+        {
+            GraphicsService.gl.BindBuffer(BufferTarget.ShaderStorageBuffer, Handle);
+            return new AssetBinding(() => GraphicsService.gl.BindBuffer(BufferTarget.ShaderStorageBuffer, 0));
+        }
+
+        public void Dispose()
+        {
+            GraphicsService.gl.DeleteBuffer(Handle);
+            GraphicsService.ShaderBufferHandles.Remove(Handle);
+        }
+    }
+
+    public class ShaderBufferObject<TData> : ShaderBufferObject where TData : struct
+    {        
+        public ReadOnlyMemory<TData> Data { get; }
+
+        public ShaderBufferObject(ManagedGraphicsService graphics, int layoutQualifier, TData[] data) : base(graphics, layoutQualifier)
+        {
+            Data = data;
+            graphics.gl.BindBuffer(BufferTarget.ShaderStorageBuffer, Handle);
+            graphics.gl.BufferData(BufferTarget.ShaderStorageBuffer, Marshal.SizeOf<TData>() * data.Length, data, BufferUsageHint.DynamicRead);
+            graphics.gl.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, layoutQualifier, Handle);
+            graphics.gl.BindBuffer(BufferTarget.ShaderStorageBuffer, 0);
+        }        
+    }
+
     public class ShaderProgram : IManagedAssetHandle
     {
         internal Transform viewTransform;
 
         internal ShaderProgram(ManagedGraphicsService graphics, string vertexSource, string fragmentSource)
         {
-            this.graphics = graphics;
+            GraphicsService = graphics;
             var vert = graphics.CreateVertexShader(vertexSource);
             var frag = graphics.CreateFragmentShader(fragmentSource);
 
@@ -25,34 +68,36 @@ namespace Render.Core.GraphicsInterface
             graphics.gl.AttachShader(handle, frag.Handle);
             graphics.gl.LinkProgram(handle);
             graphics.gl.BindFragDataLocation(handle, 0, "outColor");
+            string log = graphics.gl.GetProgramInfoLog(handle);
+            if (!string.IsNullOrEmpty(log))
+                throw new Exception(log);
         }
 
         private void SetViewTransform(int x, int y)
         {
             viewTransform = Transform.Identity().Multiply(Transform.Translation((-1f, -1f, 0f))).Multiply(Transform.Scale(2.0 / x, 2.0 / y, 1.0));
         }
-
-        private readonly ManagedGraphicsService graphics;
-        public ManagedGraphicsService GraphicsService => throw new NotImplementedException();
+        
+        public ManagedGraphicsService GraphicsService { get; }
 
         private readonly int handle;
         public int Handle => handle;
 
         public AssetBinding Binding()
         {
-            graphics.gl.UseProgram(handle);
-            int loc = graphics.gl.GetUniformLocation(handle, "view");
+            GraphicsService.gl.UseProgram(handle);
+            int loc = GraphicsService.gl.GetUniformLocation(handle, "view");
             var data = viewTransform.AsSpan().ToArray();
-            graphics.gl.UniformMatrix4(loc, 1, false, data);
-            return new AssetBinding(() => graphics.gl.UseProgram(0));
+            GraphicsService.gl.UniformMatrix4(loc, 1, false, data);
+            return new AssetBinding(() => GraphicsService.gl.UseProgram(0));
         }
 
         public void SetUniformFloat(string name, float value)
         {
             using (Binding())
             {
-                int loc = graphics.gl.GetUniformLocation(handle, name);
-                graphics.gl.Uniform1(loc, value);
+                int loc = GraphicsService.gl.GetUniformLocation(handle, name);
+                GraphicsService.gl.Uniform1(loc, value);
             }
         }
 
@@ -60,17 +105,30 @@ namespace Render.Core.GraphicsInterface
         {
             using (Binding())
             {
-                int loc = graphics.gl.GetUniformLocation(handle, name);
-                graphics.gl.Uniform1(loc, value);
+                int loc = GraphicsService.gl.GetUniformLocation(handle, name);
+                GraphicsService.gl.Uniform1(loc, value);
             }
+        }
+
+        public void SetUniformArray<T>(string name, T[] data, Action<string, T> set)
+        {
+            for (int i = 0; i < data.Length; i++)
+                set($"{name}[{i}]", data[i]);
+        }
+
+        public void SetUniformStructArray<TData, TField>(string name, string field, TData[] data, Func<TData, TField> selector, Action<string, TField> set)
+            where TData : struct
+        {
+            for (int i = 0; i < data.Length; i++)
+                set($"{name}[{i}].{field}", selector(data[i]));
         }
 
         public void SetUniformInteger(string name, int value)
         {
             using (Binding())
             {
-                int loc = graphics.gl.GetUniformLocation(handle, name);
-                graphics.gl.Uniform1(loc, value);
+                int loc = GraphicsService.gl.GetUniformLocation(handle, name);
+                GraphicsService.gl.Uniform1(loc, value);
             }
         }
 
@@ -78,8 +136,8 @@ namespace Render.Core.GraphicsInterface
         {
             using (Binding())
             {
-                int loc = graphics.gl.GetUniformLocation(handle, name);
-                graphics.gl.Uniform1(loc, value);
+                int loc = GraphicsService.gl.GetUniformLocation(handle, name);
+                GraphicsService.gl.Uniform1(loc, value);
             }
         }
 
@@ -87,9 +145,9 @@ namespace Render.Core.GraphicsInterface
         {
             using (Binding())
             {
-                int loc = graphics.gl.GetUniformLocation(handle, name);
+                int loc = GraphicsService.gl.GetUniformLocation(handle, name);
                 var data = transform.AsSpan().ToArray();
-                graphics.gl.UniformMatrix4(loc, 1, false, data);
+                GraphicsService.gl.UniformMatrix4(loc, 1, false, data);
             }
         }
 
@@ -97,8 +155,8 @@ namespace Render.Core.GraphicsInterface
         {
             using (Binding())
             {
-                int loc = graphics.gl.GetUniformLocation(handle, name);
-                graphics.gl.Uniform4(loc, 1, vector.AsSpan().ToArray());
+                int loc = GraphicsService.gl.GetUniformLocation(handle, name);
+                GraphicsService.gl.Uniform4(loc, 1, vector.AsSpan().ToArray());
             }
         }
 
@@ -106,8 +164,8 @@ namespace Render.Core.GraphicsInterface
         {
             using (Binding())
             {
-                int loc = graphics.gl.GetUniformLocation(handle, name);
-                graphics.gl.Uniform3(loc, 1, vector.AsSpan().ToArray());
+                int loc = GraphicsService.gl.GetUniformLocation(handle, name);
+                GraphicsService.gl.Uniform3(loc, 1, vector.AsSpan().ToArray());
             }
         }
 
@@ -115,8 +173,8 @@ namespace Render.Core.GraphicsInterface
         {
             using (Binding())
             {
-                int loc = graphics.gl.GetUniformLocation(handle, name);
-                graphics.gl.Uniform2(loc, 1, vector.AsSpan().ToArray());
+                int loc = GraphicsService.gl.GetUniformLocation(handle, name);
+                GraphicsService.gl.Uniform2(loc, 1, vector.AsSpan().ToArray());
             }
         }
 
@@ -144,17 +202,7 @@ namespace Render.Core.GraphicsInterface
                 throw new InvalidOperationException("Uniform structs must have sequential or explicit layout");
 
             return firstElementNames[t];
-        }
-
-        //public void SetUniformStruct<T>(string name, T value) where T : struct
-        //{
-        //    string field_name = getFirstElementName<T>();
-        //    using (Binding())
-        //    {
-        //        int loc = graphics.gl.GetUniformLocation(handle, $"{name}.{field_name}");
-        //        graphics.gl.Uniform1(loc, value);
-        //    }
-        //}
+        }        
 
         //public void SetUniformTexture(string name, Texture texture)
         //{
@@ -169,8 +217,8 @@ namespace Render.Core.GraphicsInterface
 
         public void Dispose()
         {
-            graphics.gl.DeleteProgram(handle);
-            graphics.ProgramHandles.Remove(handle);
+            GraphicsService.gl.DeleteProgram(handle);
+            GraphicsService.ProgramHandles.Remove(handle);
         }
     }
 }

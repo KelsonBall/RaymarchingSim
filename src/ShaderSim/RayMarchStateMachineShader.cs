@@ -44,7 +44,7 @@ namespace ShaderSim
 
         const byte DONE = 0xFF;
 
-        protected void HandleColorOp(ref MarchStep step)
+        protected MarchStep HandleColorOp(MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
 
@@ -61,12 +61,13 @@ namespace ShaderSim
                 step.State = DONE;
                 step.Next = node.Parent;
             }
+
+            return step;
         }
 
-        protected void HandleUnionOp(ref MarchStep step)
+        protected MarchStep HandleUnionOp(MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-
 
             if (step.State == 0)
             {
@@ -95,12 +96,13 @@ namespace ShaderSim
                 step.State = DONE;
                 step.Next = node.Parent;
             }
+
+            return step;
         }
 
-        protected void HandleIntersectionOp(ref MarchStep step)
+        protected MarchStep HandleIntersectionOp(MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-
 
             if (step.State == 0)
             {
@@ -129,12 +131,13 @@ namespace ShaderSim
                 step.State = DONE;
                 step.Next = node.Parent;
             }
+
+            return step;
         }
 
-        protected void HandleSubtractionOp(ref MarchStep step)
+        protected MarchStep HandleSubtractionOp(MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-
 
             if (step.State == 0)
             {
@@ -163,12 +166,13 @@ namespace ShaderSim
                 step.State = DONE;
                 step.Next = node.Parent;
             }
+
+            return step;
         }
 
-        protected void HandleTransformOp(ref MarchStep step)
+        protected MarchStep HandleTransformOp(MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-
 
             if (step.State == 0)
             {
@@ -185,12 +189,13 @@ namespace ShaderSim
                 step.Color = step.LeftColor;
                 step.Next = node.Parent;
             }
+
+            return step;
         }
 
-        protected void HandleTranslationOp(ref MarchStep step)
+        protected MarchStep HandleTranslationOp(MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
-
 
             if (step.State == 0)
             {
@@ -207,18 +212,21 @@ namespace ShaderSim
                 step.Color = step.LeftColor;
                 step.Next = node.Parent;
             }
+
+            return step;
         }
 
-        protected void HandleSphereOp(ref MarchStep step)
+        protected MarchStep HandleSphereOp(MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
 
             step.Value = step.Position.Magnitude() - scene.DoubleEntities[node.Parameter];
-
             step.Next = node.Parent;
+
+            return step;
         }
 
-        protected void HandleBoxOp(ref MarchStep step)
+        protected MarchStep HandleBoxOp(MarchStep step)
         {
             var node = scene.NodeEntities[step.Index];
 
@@ -230,6 +238,8 @@ namespace ShaderSim
             step.Value = inside + outside;
 
             step.Next = node.Parent;
+
+            return step;
         }
 
         protected MarchResult Sdf_March(vec3 initial)
@@ -257,31 +267,32 @@ namespace ShaderSim
 
 
                 steps[index].Index = index;
+
                 switch (scene.NodeEntities[index].Operation)
                 {
                     case OpType3d.Color:
-                        HandleColorOp(ref steps[index]);
+                        steps[index] = HandleColorOp(steps[index]);
                         break;
                     case OpType3d.CsgUnion:
-                        HandleUnionOp(ref steps[index]);
+                        steps[index] = HandleUnionOp(steps[index]);
                         break;
                     case OpType3d.CsgIntersect:
-                        HandleIntersectionOp(ref steps[index]);
+                        steps[index] = HandleIntersectionOp(steps[index]);
                         break;
                     case OpType3d.CsgSubtract:
-                        HandleSubtractionOp(ref steps[index]);
+                        steps[index] = HandleSubtractionOp(steps[index]);
                         break;
                     case OpType3d.SpatialTransform:
-                        HandleTransformOp(ref steps[index]);
+                        steps[index] = HandleTransformOp(steps[index]);
                         break;
                     case OpType3d.SpatialTranslation:
-                        HandleTranslationOp(ref steps[index]);
+                        steps[index] = HandleTranslationOp(steps[index]);
                         break;
                     case OpType3d.ShapeSphere:
-                        HandleSphereOp(ref steps[index]);
+                        steps[index] = HandleSphereOp(steps[index]);
                         break;
                     case OpType3d.ShapeBox:
-                        HandleBoxOp(ref steps[index]);
+                        steps[index] = HandleBoxOp(steps[index]);
                         break;
                     default:
                         throw new InvalidOperationException();
@@ -295,7 +306,7 @@ namespace ShaderSim
 
                 index = steps[index].Next;
 
-                if (index == 0 && steps[index].State == 0xFF)
+                if (index == 0 && steps[index].State == DONE)
                     break;
             }
 
@@ -303,15 +314,16 @@ namespace ShaderSim
         }
 
         protected const double FieldOfView = Math.PI / 3.5;
-        protected const int MarchLimit = 250;
+        protected const int MarchLimit = 100;
         protected const double DrawDistance = 30;
         protected const double MinStepLength = 0.025;
         protected const double NormalEpsilon = 0.1;
 
         protected vec3 getUvRay(double fov, vec2 uv, vec2 size)
         {
+            var HalfTanFov = Math.Tan(fov) / 2;
             vec2 xy = uv - (size / 2);
-            var z = size.y / (Math.Tan(fov) / 2);
+            var z = size.y / HalfTanFov;
             return new vec3(xy, -z).Unit();
         }
 
@@ -332,22 +344,18 @@ namespace ShaderSim
             var ray = getUvRay(FieldOfView, xy, wh);
 
             vec3 position = (0, 0, 0);
-            var last_result = Sdf_March(position);
+           
+            var last_result = Sdf_March(position + (ray * 5));
+            
             double traveled = 0;
 
-            for (int marches = 0; marches < MarchLimit; marches++)
+            for (int marches = 0; marches < MarchLimit && traveled < DrawDistance; marches++)
             {
                 if (last_result.Value < MinStepLength)
-                {
-                    var normal = estimateNormal(position);
-                    var value = (normal - (0, 1, 0)).Magnitude() - 0.8;
-
-                    return new vec4(last_result.Color * Math.Min(Math.Max(value, 0), 1), 1.0);
+                {                    
+                    return new vec4(1.0, 1.0, 1.0, 1.0);
                 }
-
-                if (traveled > DrawDistance)
-                    break;
-
+                
                 var distance = last_result.Value;
                 position += ray * distance;
                 traveled += distance;
@@ -355,7 +363,7 @@ namespace ShaderSim
                 last_result = Sdf_March(position);
             }
 
-            return new vec4(BackgroundColor, 1.0);
+            return new vec4((ray / 2) + (0.5, 0.5, 0.5), 1.0);
         }
     }
 }

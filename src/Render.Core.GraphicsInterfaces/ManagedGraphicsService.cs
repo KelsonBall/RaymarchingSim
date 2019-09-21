@@ -52,6 +52,7 @@ namespace Render.Core.GraphicsInterface
         {
             var program = new ShaderProgram(this, vertexShader, fragmentShader);
             ProgramHandles.Add(program.Handle, program);
+            assets.Add(program);
             return program;
         }
 
@@ -60,6 +61,7 @@ namespace Render.Core.GraphicsInterface
         {
             var shader = new VertShader(this, program: source);
             VertexShaderHandles.Add(shader.Handle, shader);
+            assets.Add(shader);
             return shader;
         }
 
@@ -68,6 +70,7 @@ namespace Render.Core.GraphicsInterface
         {
             var shader = new FragShader(this, program: source);
             FragmentShaderHandles.Add(shader.Handle, shader);
+            assets.Add(shader);
             return shader;
         }
 
@@ -75,13 +78,15 @@ namespace Render.Core.GraphicsInterface
         public VertexBufferObject CreateVertexBuffer(IEnumerable<vec3> vectors)
         {
             var buffer = new VertexBufferObject(this, vectors);
-
+            VertexBufferHandles.Add(buffer.Handle, buffer);
+            assets.Add(buffer);
             return buffer;
         }
 
         public VertexBufferObject CreateVertexBuffer(IEnumerable<vec2> vectors)
         {
             var buffer = new VertexBufferObject(this, vectors.Select(v => new vec3(v, 0f)));
+            VertexBufferHandles.Add(buffer.Handle, buffer);
             assets.Add(buffer);
             return buffer;
         }
@@ -90,22 +95,34 @@ namespace Render.Core.GraphicsInterface
         public VertexArrayObject CreateVertexArray()
         {
             var array = new VertexArrayObject(this);
+            VertexArrayHandles.Add(array.Handle, array);
             assets.Add(array);
             return array;
         }
 
+        internal readonly Dictionary<int, ShaderBufferObject> ShaderBufferHandles = new Dictionary<int, ShaderBufferObject>();        
+        public ShaderBufferObject<TData> CreateShaderBufferObject<TData>(int layoutQualifier, TData[] data) where TData : struct
+        {
+            var buffer = new ShaderBufferObject<TData>(this, layoutQualifier, data);
+            ShaderBufferHandles.Add(buffer.Handle, buffer);
+            assets.Add(buffer);
+            return buffer;
+        }
+
         public void Dispose()
         {
+            foreach (var asset in assets)
+                asset.Dispose();
             //foreach (var kvp in VertexShaderHandles.ToList())
             //    kvp.Value.Dispose();
             //foreach (var kvp in FragmentShaderHandles.ToList())
             //    kvp.Value.Dispose();
             //foreach (var kvp in ProgramHandles.ToList())
             //    kvp.Value.Dispose();
-            foreach (var kvp in VertexBufferHandles.ToList())
-                kvp.Value.Dispose();
-            foreach (var kvp in VertexArrayHandles.ToList())
-                kvp.Value.Dispose();
+            //foreach (var kvp in VertexBufferHandles.ToList())
+            //    kvp.Value.Dispose();
+            //foreach (var kvp in VertexArrayHandles.ToList())
+            //    kvp.Value.Dispose();
         }
     }
 }

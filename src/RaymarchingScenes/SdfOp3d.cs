@@ -41,25 +41,14 @@ namespace RaymarchingScenes
         Matrix4 = 5,
     }
 
-    [StructLayout(LayoutKind.Explicit)]
+    [StructLayout(LayoutKind.Sequential)]
     public readonly struct SdfOp3d
-    {
-        [FieldOffset(0)]
-        public readonly uint EntityId;
-
-        [FieldOffset(4)]
-        public readonly OpType3d Operation;
-
-        [FieldOffset(8)]
-        public readonly uint Left;
-        [FieldOffset(12)]
-        public readonly uint Right;
-
-        [FieldOffset(16)]
+    {        
+        public readonly uint EntityId;     
+        public readonly OpType3d Operation;        
+        public readonly uint Left;        
+        public readonly uint Right;        
         public readonly uint Parent;
-
-        //public ParameterTypes ParameterType;
-        [FieldOffset(24)]
         public readonly uint Parameter;
 
         public SdfOp3d(int entity, int parent, OpType3d type, int? leftId = null, int? rightId = null, int? parameterId = null)
